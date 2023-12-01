@@ -1,0 +1,188 @@
+basePath: /api/v1/
+definitions:
+  handler.Health.response:
+    properties:
+      status:
+        type: string
+    type: object
+  handler.ListServer.response:
+    properties:
+      server:
+        items:
+          $ref: '#/definitions/models.Server'
+        type: array
+    type: object
+  handler.Sleep.response:
+    properties:
+      duration:
+        type: number
+      end:
+        type: string
+      start:
+        type: string
+    type: object
+  handler.pingResponse:
+    properties:
+      info:
+        $ref: '#/definitions/handler.pingResponseInfo'
+      message:
+        type: string
+    type: object
+  handler.pingResponseInfo:
+    properties:
+      addr:
+        type: string
+      headers:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
+      method:
+        type: string
+      request:
+        type: string
+      uri:
+        type: string
+    type: object
+  models.APIError:
+    properties:
+      errorcode:
+        type: string
+      fapiMessage:
+        type: string
+      message:
+        type: string
+    type: object
+  models.Server:
+    properties:
+      port:
+        type: integer
+    type: object
+host: localhost
+info:
+  contact: {}
+  title: LocalHostBunny
+  version: "1.0"
+paths:
+  /api/health:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.Health.response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Server Health-checks
+      tags:
+      - Common
+  /api/ping:
+    delete:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.pingResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Simple endpoint to test connection (any http method)
+      tags:
+      - Common
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.pingResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Simple endpoint to test connection (any http method)
+      tags:
+      - Common
+    patch:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.pingResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Simple endpoint to test connection (any http method)
+      tags:
+      - Common
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.pingResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Simple endpoint to test connection (any http method)
+      tags:
+      - Common
+    put:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.pingResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Simple endpoint to test connection (any http method)
+      tags:
+      - Common
+  /api/sleep/:secs:
+    post:
+      parameters:
+      - description: sleep delay (in seconds)
+        in: path
+        name: secs
+        required: true
+        type: number
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.Sleep.response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Return 200 after x seconds
+      tags:
+      - Common
+  /server:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ListServer.response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: List running server
+swagger: "2.0"

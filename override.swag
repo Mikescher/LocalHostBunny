@@ -1,0 +1,4 @@
+replace rfctime.RFC3339NanoTime string
+replace rfctime.SecondsF64      string
+replace cryptext.PassHash       string
+replace enums.EnumMetaValue     any

@@ -2,15 +2,23 @@ package logic
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/cakturk/go-netstat/netstat"
 	"github.com/rs/zerolog/log"
 	"gogs.mikescher.com/BlackForestBytes/goext/ginext"
+	"gogs.mikescher.com/BlackForestBytes/goext/langext"
 	"gogs.mikescher.com/BlackForestBytes/goext/syncext"
+	"io"
 	bunny "locbunny"
 	"locbunny/models"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -45,7 +53,7 @@ func (app *Application) Stop() {
 
 func (app *Application) Run() {
 
-	addr := net.JoinHostPort(app.Config.ServerIP, app.Config.ServerPort)
+	addr := net.JoinHostPort(app.Config.ServerIP, strconv.Itoa(app.Config.ServerPort))
 
 	errChan, httpserver := app.Gin.ListenAndServeHTTP(addr, func(port string) {
 		app.Port = port
@@ -104,18 +112,159 @@ func (app *Application) Run() {
 
 func (app *Application) ListServer(ctx *ginext.AppContext) ([]models.Server, error) {
 
-	socks, err := netstat.TCPSocks(netstat.NoopFilter)
+	socks4, err := netstat.TCPSocks(netstat.NoopFilter)
 	if err != nil {
 		return nil, err
 	}
 
-	res := make([]models.Server, 0)
+	socks6, err := netstat.TCP6Socks(netstat.NoopFilter)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, sock := range socks {
+	sockCount := len(socks4) + len(socks6)
 
-		res = append(res, models.Server{Port: int(sock.LocalAddr.Port)})
+	wg := sync.WaitGroup{}
 
+	echan := make(chan error, sockCount*3)
+	rchan := make(chan models.Server, sockCount*3)
+
+	for _i := range socks4 {
+		i := _i
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			con1, err := app.verifyHTTPConn(socks4[i], "HTTP", "v4")
+			if err == nil {
+				rchan <- con1
+				return
+			} else {
+				echan <- err
+			}
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			con2, err := app.verifyHTTPConn(socks4[i], "HTTPS", "v4")
+			if err == nil {
+				rchan <- con2
+				return
+			} else {
+				echan <- err
+			}
+		}()
+	}
+
+	for _i := range socks6 {
+		i := _i
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			con1, err := app.verifyHTTPConn(socks6[i], "HTTP", "v6")
+			if err == nil {
+				rchan <- con1
+				return
+			} else {
+				echan <- err
+			}
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			con2, err := app.verifyHTTPConn(socks6[i], "HTTPS", "v6")
+			if err == nil {
+				rchan <- con2
+				return
+			} else {
+				echan <- err
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(echan)
+	close(rchan)
+
+	duplicates := make(map[int]bool, sockCount*3)
+	res := make([]models.Server, 0, sockCount*3)
+	for v := range rchan {
+
+		if _, ok := duplicates[v.Port]; !ok {
+			res = append(res, v)
+			duplicates[v.Port] = true
+		}
 	}
 
 	return res, nil
+}
+
+func (app *Application) verifyHTTPConn(sock netstat.SockTabEntry, proto string, ipversion string) (models.Server, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), bunny.Conf.VerifyConnTimeout)
+	defer cancel()
+
+	if sock.State != netstat.Listen {
+		log.Debug().Msg(fmt.Sprintf("Failed to verify socket [%s|%s] invalid state: %s", ipversion, strings.ToUpper(proto), sock.State.String()))
+		return models.Server{}, errors.New("invalid sock-state")
+	}
+
+	if int(sock.LocalAddr.Port) == bunny.Conf.ServerPort && sock.Process != nil && sock.Process.Pid == bunny.SelfProcessID {
+		log.Debug().Msg(fmt.Sprintf("Skip socket [%s|%s] (this is our own server)", ipversion, strings.ToUpper(proto)))
+		return models.Server{}, errors.New("skip self")
+	}
+
+	c := http.Client{}
+	url := fmt.Sprintf("%s://localhost:%d", strings.ToLower(proto), sock.LocalAddr.Port)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		log.Debug().Msg(fmt.Sprintf("Failed to create [%s|%s] request to %d", ipversion, strings.ToUpper(proto), sock.LocalAddr.Port))
+		return models.Server{}, err
+	}
+
+	resp1, err := c.Do(req)
+	if err != nil {
+		log.Debug().Msg(fmt.Sprintf("Failed to send [%s|%s] request to %s", ipversion, strings.ToUpper(proto), url))
+		return models.Server{}, err
+	}
+
+	defer func() { _ = resp1.Body.Close() }()
+
+	resbody, err := io.ReadAll(resp1.Body)
+	if err != nil {
+		log.Debug().Msg(fmt.Sprintf("Failed to read [%s|%s] response from %s", ipversion, strings.ToUpper(proto), url))
+		return models.Server{}, err
+	}
+
+	ct := resp1.Header.Get("Content-Type")
+	if ct != "" {
+
+		var pnm *string = nil
+		var pid *int = nil
+		if sock.Process != nil {
+			pnm = langext.Ptr(sock.Process.Name)
+			pid = langext.Ptr(sock.Process.Pid)
+		}
+
+		return models.Server{
+			Port:        int(sock.LocalAddr.Port),
+			IP:          sock.LocalAddr.IP.String(),
+			Protocol:    proto,
+			StatusCode:  resp1.StatusCode,
+			Response:    string(resbody),
+			ContentType: ct,
+			Process:     pnm,
+			PID:         pid,
+			UID:         sock.UID,
+			SockState:   sock.State.String(),
+		}, nil
+	}
+
+	log.Debug().Msg(fmt.Sprintf("Failed to categorize [%s|%s] response from %s (Content-Type: '%s')", ipversion, strings.ToUpper(proto), url, ct))
+	return models.Server{}, errors.New("invalid response-type")
 }

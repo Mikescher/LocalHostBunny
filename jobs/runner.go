@@ -136,9 +136,6 @@ func (j *JobRunner[TData]) execute() (err error) {
 
 	changes, err := langext.RunPanicSafeR2(func() (int, error) { return j.jobFunc(runCtx, j.app, lstr, j.data) })
 
-	finCtx, cancelFinCtx := context.WithTimeout(context.Background(), time.Minute)
-	defer cancelFinCtx()
-
 	//goland:noinspection GoTypeAssertionOnErrors
 	if panicerr, ok := err.(langext.PanicWrappedErr); ok {
 

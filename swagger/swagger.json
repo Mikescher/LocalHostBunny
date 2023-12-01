@@ -283,7 +283,34 @@
         "models.Server": {
             "type": "object",
             "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "pid": {
+                    "type": "integer"
+                },
                 "port": {
+                    "type": "integer"
+                },
+                "process": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "response": {
+                    "type": "string"
+                },
+                "sockState": {
+                    "type": "string"
+                },
+                "statusCode": {
+                    "type": "integer"
+                },
+                "uid": {
                     "type": "integer"
                 }
             }

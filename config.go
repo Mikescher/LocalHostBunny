@@ -11,95 +11,95 @@ import (
 
 const APILevel = 1
 
-type Config struct {
-	Namespace       string
-	GinDebug        bool          `env:"GINDEBUG"`
-	ReturnRawErrors bool          `env:"RETURNERRORS"`
-	Custom404       bool          `env:"CUSTOM404"`
-	LogLevel        zerolog.Level `env:"LOGLEVEL"`
-	ServerIP        string        `env:"IP"`
-	ServerPort      string        `env:"PORT"`
-	RequestTimeout  time.Duration `env:"REQUEST_TIMEOUT"`
-	Cors            bool          `env:"CORS"`
-}
+var SelfProcessID int
 
-type MailConfig struct {
-	Host     string `env:"HOST"`
-	Port     int    `env:"PORT"`
-	Username string `env:"USERNAME"`
-	Password string `env:"PASSWORD"`
-	Sender   string `env:"SENDER"`
+type Config struct {
+	Namespace         string
+	GinDebug          bool          `env:"GINDEBUG"`
+	ReturnRawErrors   bool          `env:"RETURNERRORS"`
+	Custom404         bool          `env:"CUSTOM404"`
+	LogLevel          zerolog.Level `env:"LOGLEVEL"`
+	ServerIP          string        `env:"IP"`
+	ServerPort        int           `env:"PORT"`
+	RequestTimeout    time.Duration `env:"REQUEST_TIMEOUT"`
+	Cors              bool          `env:"CORS"`
+	VerifyConnTimeout time.Duration `env:"VERIFY_CONN_TIMEOUT"`
 }
 
 var Conf Config
 
 var configLocHost = func() Config {
 	return Config{
-		Namespace:       "local",
-		GinDebug:        true,
-		ServerIP:        "0.0.0.0",
-		ServerPort:      "80",
-		Custom404:       true,
-		ReturnRawErrors: true,
-		RequestTimeout:  16 * time.Second,
-		LogLevel:        zerolog.DebugLevel,
-		Cors:            true,
+		Namespace:         "local",
+		GinDebug:          true,
+		ServerIP:          "0.0.0.0",
+		ServerPort:        80,
+		Custom404:         true,
+		ReturnRawErrors:   true,
+		RequestTimeout:    16 * time.Second,
+		LogLevel:          zerolog.DebugLevel,
+		Cors:              true,
+		VerifyConnTimeout: time.Second,
 	}
 }
 
 var configLocDocker = func() Config {
 	return Config{
-		Namespace:       "local-docker",
-		GinDebug:        true,
-		ServerIP:        "0.0.0.0",
-		ServerPort:      "80",
-		Custom404:       true,
-		ReturnRawErrors: true,
-		RequestTimeout:  16 * time.Second,
-		LogLevel:        zerolog.DebugLevel,
-		Cors:            true,
+		Namespace:         "local-docker",
+		GinDebug:          true,
+		ServerIP:          "0.0.0.0",
+		ServerPort:        80,
+		Custom404:         true,
+		ReturnRawErrors:   true,
+		RequestTimeout:    16 * time.Second,
+		LogLevel:          zerolog.DebugLevel,
+		Cors:              true,
+		VerifyConnTimeout: time.Second,
 	}
 }
 
 var configDev = func() Config {
 	return Config{
-		Namespace:       "develop",
-		GinDebug:        true,
-		ServerIP:        "0.0.0.0",
-		ServerPort:      "80",
-		Custom404:       false,
-		ReturnRawErrors: false,
-		RequestTimeout:  16 * time.Second,
-		LogLevel:        zerolog.DebugLevel,
-		Cors:            false,
+		Namespace:         "develop",
+		GinDebug:          true,
+		ServerIP:          "0.0.0.0",
+		ServerPort:        80,
+		Custom404:         false,
+		ReturnRawErrors:   false,
+		RequestTimeout:    16 * time.Second,
+		LogLevel:          zerolog.DebugLevel,
+		Cors:              false,
+		VerifyConnTimeout: time.Second,
 	}
 }
 
 var configStag = func() Config {
 	return Config{
-		Namespace:       "staging",
-		GinDebug:        true,
-		ServerIP:        "0.0.0.0",
-		ServerPort:      "80",
-		Custom404:       false,
-		ReturnRawErrors: false,
-		RequestTimeout:  16 * time.Second,
-		LogLevel:        zerolog.DebugLevel,
-		Cors:            false,
+		Namespace:         "staging",
+		GinDebug:          true,
+		ServerIP:          "0.0.0.0",
+		ServerPort:        80,
+		Custom404:         false,
+		ReturnRawErrors:   false,
+		RequestTimeout:    16 * time.Second,
+		LogLevel:          zerolog.DebugLevel,
+		Cors:              false,
+		VerifyConnTimeout: time.Second,
 	}
 }
 
 var configProd = func() Config {
 	return Config{
-		Namespace:       "production",
-		GinDebug:        false,
-		ServerIP:        "0.0.0.0",
-		ServerPort:      "80",
-		Custom404:       false,
-		ReturnRawErrors: false,
-		RequestTimeout:  16 * time.Second,
-		LogLevel:        zerolog.InfoLevel,
-		Cors:            false,
+		Namespace:         "production",
+		GinDebug:          false,
+		ServerIP:          "0.0.0.0",
+		ServerPort:        80,
+		Custom404:         false,
+		ReturnRawErrors:   false,
+		RequestTimeout:    16 * time.Second,
+		LogLevel:          zerolog.InfoLevel,
+		Cors:              false,
+		VerifyConnTimeout: time.Second,
 	}
 }
 
@@ -143,4 +143,6 @@ func init() {
 	}
 
 	Conf = cfg
+
+	SelfProcessID = os.Getpid()
 }

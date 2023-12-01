@@ -7,7 +7,7 @@ import "go.mongodb.org/mongo-driver/bson/bsontype"
 import "go.mongodb.org/mongo-driver/bson/primitive"
 import "gogs.mikescher.com/BlackForestBytes/goext/exerr"
 
-const ChecksumIDGenerator = "8fa696914bf8d1c1c4b9f80be45d0a9dfbd0fed789856bf84ced2979c789b958" // GoExtVersion: 0.0.288
+const ChecksumIDGenerator = "cf5fe3d14932e535744418c0aa3751c08f392f9f117bfa5e8b04f70379879131" // GoExtVersion: 0.0.288
 
 // ================================ AnyID (ids.go) ================================
 

@@ -83,6 +83,10 @@ info:
   title: LocalHostBunny
   version: "1.0"
 paths:
+  /:
+    get:
+      responses: {}
+      summary: (Website)
   /api/health:
     get:
       responses:
@@ -187,6 +191,14 @@ paths:
       summary: Return 200 after x seconds
       tags:
       - Common
+  /index.html:
+    get:
+      responses: {}
+      summary: (Website)
+  /scripts.script.js:
+    get:
+      responses: {}
+      summary: (Website)
   /server:
     get:
       responses:

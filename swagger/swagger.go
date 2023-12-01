@@ -2,7 +2,6 @@ package swagger
 
 import (
 	"embed"
-	_ "embed"
 	"github.com/gin-gonic/gin"
 	"gogs.mikescher.com/BlackForestBytes/goext/ginext"
 	"net/http"

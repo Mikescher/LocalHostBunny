@@ -22,7 +22,7 @@ ids:
 
 run: build
 	mkdir -p .run-data
-	sudo _build/bunny_backend
+	sudo BUNNY_LIVERELOAD="$(shell pwd)/webassets" CONF_NS="local-host" _build/bunny_backend
 
 gow:
 	# go install github.com/mitranim/gow@latest

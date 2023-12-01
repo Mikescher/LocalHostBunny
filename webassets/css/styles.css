@@ -1,0 +1,55 @@
+
+* {
+    font-family: 'MonaspaceXenon';
+}
+
+html, body {
+    width: 100%;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+
+    margin: 1rem;
+}
+
+h1 {
+    margin-bottom: 1rem;
+}
+
+#maincontent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    padding: 0 1rem;
+}
+
+.server {
+    background-color: #CCC;
+    text-align: center;
+    padding: 2px 0.5rem;
+
+    color: black;
+    text-decoration: none;
+
+    border-radius: 6px;
+    border: 1px solid #888;
+
+    box-shadow: 0 0 4px #888;
+
+    transition: all 0.2s;
+}
+
+.server:hover {
+    box-shadow: 0 0 4px #000;
+    background-color: #AAA;
+    color: #00F;
+}
+

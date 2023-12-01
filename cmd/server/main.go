@@ -7,6 +7,7 @@ import (
 	bunny "locbunny"
 	"locbunny/api"
 	"locbunny/logic"
+	"locbunny/webassets"
 )
 
 func main() {
@@ -16,7 +17,9 @@ func main() {
 
 	log.Info().Msg(fmt.Sprintf("Starting with config-namespace <%s>", conf.Namespace))
 
-	app := logic.NewApp()
+	assets := webassets.NewAssets()
+
+	app := logic.NewApp(assets)
 
 	ginengine := ginext.NewEngine(conf.Cors, conf.GinDebug, true, conf.RequestTimeout)
 

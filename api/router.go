@@ -13,6 +13,7 @@ type Router struct {
 	app *logic.Application
 
 	commonHandler handler.CommonHandler
+	apiHandler    handler.APIHandler
 	webHandler    handler.WebHandler
 }
 
@@ -21,6 +22,7 @@ func NewRouter(app *logic.Application) *Router {
 		app: app,
 
 		commonHandler: handler.NewCommonHandler(app),
+		apiHandler:    handler.NewAPIHandler(app),
 		webHandler:    handler.NewWebHandler(app),
 	}
 }
@@ -50,9 +52,18 @@ func (r *Router) Init(e *ginext.GinWrapper) {
 		docs.GET("/swagger/*sub").Handle(swagger.Handle)
 	}
 
+	// ================ Website ================
+
+	e.Routes().GET("/").Handle(r.webHandler.ServeIndexHTML)
+	e.Routes().GET("/index.html").Handle(r.webHandler.ServeIndexHTML)
+	e.Routes().GET("/scripts/script.js").Handle(r.webHandler.ServeScriptJS)
+	e.Routes().GET("/:fp1").Handle(r.webHandler.ServeAssets)
+	e.Routes().GET("/:fp1/:fp2").Handle(r.webHandler.ServeAssets)
+	e.Routes().GET("/:fp1/:fp2/:fp3").Handle(r.webHandler.ServeAssets)
+
 	// ================ API ================
 
-	api.GET("/server").Handle(r.webHandler.ListServer)
+	api.GET("/server").Handle(r.apiHandler.ListServer)
 
 	// ================  ================
 

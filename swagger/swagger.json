@@ -8,6 +8,12 @@
     "host": "localhost",
     "basePath": "/api/v1/",
     "paths": {
+        "/": {
+            "get": {
+                "summary": "(Website)",
+                "responses": {}
+            }
+        },
         "/api/health": {
             "get": {
                 "tags": [
@@ -167,6 +173,18 @@
                         }
                     }
                 }
+            }
+        },
+        "/index.html": {
+            "get": {
+                "summary": "(Website)",
+                "responses": {}
+            }
+        },
+        "/scripts.script.js": {
+            "get": {
+                "summary": "(Website)",
+                "responses": {}
             }
         },
         "/server": {

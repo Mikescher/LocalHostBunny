@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"github.com/cakturk/go-netstat/netstat"
 	"github.com/rs/zerolog/log"
+	"github.com/shirou/gopsutil/v3/process"
 	"gogs.mikescher.com/BlackForestBytes/goext/ginext"
 	"gogs.mikescher.com/BlackForestBytes/goext/langext"
+	"gogs.mikescher.com/BlackForestBytes/goext/rext"
 	"gogs.mikescher.com/BlackForestBytes/goext/syncext"
 	"io"
 	bunny "locbunny"
@@ -17,12 +19,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 )
+
+var regexTitle = rext.W(regexp.MustCompile(`(?i)<title>(?P<v>[^>]+)</title>`))
 
 type Application struct {
 	Config bunny.Config
@@ -289,9 +294,12 @@ func (app *Application) verifyHTTPConn(sock netstat.SockTabEntry, proto string, 
 			pid = langext.Ptr(sock.Process.Pid)
 		}
 
+		name := app.DetectName(sock, ct, string(resbody))
+
 		return models.Server{
 			Port:        port,
 			IP:          sock.LocalAddr.IP.String(),
+			Name:        name,
 			Protocol:    proto,
 			StatusCode:  resp1.StatusCode,
 			Response:    string(resbody),
@@ -304,5 +312,118 @@ func (app *Application) verifyHTTPConn(sock netstat.SockTabEntry, proto string, 
 	}
 
 	log.Debug().Msg(fmt.Sprintf("Failed to categorize [%s|%s|%d] response from %s (Content-Type: '%s')", strings.ToUpper(proto), ipversion, port, url, ct))
+
 	return models.Server{}, errors.New("invalid response-type")
+}
+
+func (app *Application) DetectName(sock netstat.SockTabEntry, ct string, body string) string {
+
+	if strings.Contains(strings.ToLower(ct), "html") {
+		if m, ok := regexTitle.MatchFirst(body); ok {
+			title := m.GroupByName("v").Value()
+			if !app.isInvalidHTMLTitle(title) {
+				return title
+			}
+		}
+	}
+
+	if strings.Contains(strings.ToLower(body), "it looks like you are trying to access mongodb over http on the native driver port.") {
+		return "MongoDB"
+	}
+
+	if sock.Process != nil {
+
+		if sock.Process.Name == "java" {
+
+			proc, err := process.NewProcess(int32(sock.Process.Pid))
+			if err == nil {
+				cmdl, err := proc.CmdlineSlice()
+
+				if err == nil {
+					if v, ok := app.extractNameFromJava(cmdl); ok {
+						return v
+					}
+				}
+			}
+
+		}
+
+		if len(sock.Process.Name) > 0 {
+			return sock.Process.Name
+		}
+
+	}
+
+	return "unknown"
+}
+
+func (app *Application) isInvalidHTMLTitle(title string) bool {
+	title = strings.ToLower(title)
+	title = strings.TrimSpace(title)
+	title = strings.Trim(title, ".,\r\n\t ;")
+
+	arr := []string{
+		"404",
+		"Not found",
+		"404 Not Found",
+		"404 - Not Found",
+		"Page Not Found",
+		"File Not Found",
+		"Not Found",
+		"Site Not Found",
+		"ISAPI or CGI restriction",
+		"MIME type restriction",
+		"No handler configured",
+		"Denied by request filtering configuration",
+		"Verb denied",
+		"File extension denied",
+		"Hidden namespace",
+		"File attribute hidden",
+		"Request header too long",
+		"Request contains double escape sequence",
+		"Request contains high-bit characters",
+		"Content length too large",
+		"Request URL too long",
+		"Query string too long",
+		"DAV request sent to the static file handler",
+		"Dynamic content mapped to the static file handler via a wildcard MIME mapping",
+		"Query string sequence denied",
+		"Denied by filtering rule",
+		"Too Many URL Segments",
+	}
+
+	for _, v := range arr {
+		if title == strings.ToLower(v) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (app *Application) extractNameFromJava(cmdl []string) (string, bool) {
+
+	for i, v := range cmdl {
+		if strings.ToLower(v) == "-jar" && i+1 < len(cmdl) {
+			return cmdl[i+1], true
+		}
+	}
+
+	for _, v := range cmdl {
+		if strings.HasPrefix(strings.ToLower(v), "-didea.paths.selector=") {
+			return v[len("-Didea.paths.selector="):], true
+		}
+	}
+
+	for _, v := range cmdl {
+		if strings.HasPrefix(strings.ToLower(v), "-didea.platform.prefix") {
+			return v[len("-Didea.platform.prefix"):], true
+		}
+	}
+
+	if len(cmdl) > 0 {
+		return cmdl[len(cmdl)-1], true
+	}
+
+	return "", false
 }

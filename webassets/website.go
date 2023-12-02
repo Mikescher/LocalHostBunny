@@ -18,6 +18,7 @@ import (
 //go:embed css/*.css
 //go:embed fonts/*.woff
 //go:embed fonts/*.woff2
+//go:embed icons/*.svg
 var _assets embed.FS
 
 type templateCacheEntry struct {

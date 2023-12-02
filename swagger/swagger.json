@@ -307,6 +307,9 @@
                 "ip": {
                     "type": "string"
                 },
+                "name": {
+                    "type": "string"
+                },
                 "pid": {
                     "type": "integer"
                 },

@@ -60,6 +60,8 @@ definitions:
         type: string
       ip:
         type: string
+      name:
+        type: string
       pid:
         type: integer
       port:

@@ -11,4 +11,5 @@ type Server struct {
 	PID         *int    `json:"pid"`
 	UID         uint32  `json:"uid"`
 	SockState   string  `json:"sockState"`
+	Name        string  `json:"name"`
 }

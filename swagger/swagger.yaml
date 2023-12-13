@@ -7,7 +7,7 @@ definitions:
     type: object
   handler.ListServer.response:
     properties:
-      server:
+      servers:
         items:
           $ref: '#/definitions/models.Server'
         type: array

@@ -225,7 +225,7 @@
         "handler.ListServer.response": {
             "type": "object",
             "properties": {
-                "server": {
+                "servers": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Server"

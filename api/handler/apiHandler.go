@@ -29,7 +29,7 @@ func NewAPIHandler(app *logic.Application) APIHandler {
 //	@Router		/server [GET]
 func (h APIHandler) ListServer(pctx ginext.PreContext) ginext.HTTPResponse {
 	type response struct {
-		Server []models.Server `json:"server"`
+		Servers []models.Server `json:"servers"`
 	}
 
 	ctx, _, errResp := pctx.Start()
@@ -43,5 +43,5 @@ func (h APIHandler) ListServer(pctx ginext.PreContext) ginext.HTTPResponse {
 		return ginext.Error(err)
 	}
 
-	return ginext.JSON(http.StatusOK, response{Server: srvs})
+	return ginext.JSON(http.StatusOK, response{Servers: srvs})
 }

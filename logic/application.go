@@ -221,10 +221,6 @@ func (app *Application) ListServer(ctx context.Context, timeout time.Duration) (
 	close(echan)
 	close(rchan)
 
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
 	duplicates := make(map[int]bool, sockCount*3)
 	res := make([]models.Server, 0, sockCount*3)
 	for v := range rchan {

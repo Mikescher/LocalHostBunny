@@ -30,13 +30,18 @@
 
     <main>
 
+        <span class="loader_left"></span>
         <h1>LocalHostBunny</h1>
+        <span class="loader_right">
+            <span id="loader" class="loader hidden"></span>
+        </span>
+
         <div id="maincontent"></div>
 
     </main>
 
     <script type="text/javascript">
-        const servers = {{ listServers | json_indent | safe_js }};
+        const initialServers = {{ listServers | json_indent | safe_js }};
     </script>
 
     <script type="text/javascript" src="/scripts/script.js"></script>

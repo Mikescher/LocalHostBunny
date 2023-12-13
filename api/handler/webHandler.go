@@ -148,7 +148,7 @@ func (h WebHandler) buildScriptJSTemplate(content []byte) (webassets.ITemplate, 
 func (h WebHandler) templateFuncMap() map[string]any {
 	return map[string]any{
 		"listServers": func() []models.Server {
-			ctx, cancel := context.WithTimeout(context.Background(), bunny.Conf.VerifyConnTimeoutHTML+2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), bunny.Conf.VerifyConnTimeoutHTML+5*time.Second)
 			defer cancel()
 			v, err := h.app.ListServer(ctx, bunny.Conf.VerifyConnTimeoutHTML)
 			if err != nil {

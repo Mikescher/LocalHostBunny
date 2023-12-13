@@ -1,7 +1,13 @@
 
+const refresh_delay = 2 * 60 * 1000; // 2min
+
+let last_refresh = now();
+
+function now() { return (new Date()).getTime(); }
+
 function enc(v) { return `${v}`.replace(/[\u00A0-\u9999<>&]/g, i => '&#'+i.charCodeAt(0)+';') }
 
-function updateHTML() {
+function updateHTML(servers) {
 
     const main = document.getElementById('maincontent')
 
@@ -20,4 +26,35 @@ function updateHTML() {
 
 }
 
-document.addEventListener("DOMContentLoaded", updateHTML);
+function onVisibilityChange() {
+    if (!document.hidden && (now() - last_refresh) > refresh_delay) autoReload();
+}
+
+async function autoReload() {
+    try {
+        document.getElementById('loader').classList.remove('hidden');
+
+        const res = await fetch('/api/v1/server');
+        if (res.status !== 200) {
+            console.error(`status == ${res.status}`);
+            return;
+        }
+
+        const data = await res.json();
+
+        updateHTML(data['servers'])
+
+    } catch (err) {
+
+        console.error(err);
+
+    } finally {
+        document.getElementById('loader').classList.add('hidden');
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => updateHTML(initialServers));
+
+document.addEventListener('visibilitychange', onVisibilityChange);
+
+setInterval(autoReload, refresh_delay);

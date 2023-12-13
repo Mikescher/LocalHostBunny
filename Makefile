@@ -20,9 +20,13 @@ enums:
 ids:
 	go generate models/ids.go
 
-run: build
+run-systemd: build
 	mkdir -p .run-data
-	sudo BUNNY_LIVERELOAD="$(shell pwd)/webassets" CONF_NS="local-host" _build/bunny_backend
+	CONF_NS="production" _build/bunny_backend
+
+run-test: build
+	mkdir -p .run-data
+	sudo BUNNY_LIVERELOAD="$(shell pwd)/webassets" BUNNY_PORT="4004" CONF_NS="local-host" _build/bunny_backend
 
 gow:
 	# go install github.com/mitranim/gow@latest

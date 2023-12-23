@@ -58,6 +58,8 @@ definitions:
     properties:
       contentType:
         type: string
+      icon:
+        type: string
       ip:
         type: string
       name:
@@ -193,6 +195,16 @@ paths:
       summary: Return 200 after x seconds
       tags:
       - Common
+  /icon/:cs:
+    get:
+      parameters:
+      - description: Icon Checksum
+        in: path
+        name: cs
+        required: true
+        type: number
+      responses: {}
+      summary: Get Icon
   /index.html:
     get:
       responses: {}

@@ -64,6 +64,7 @@ func (r *Router) Init(e *ginext.GinWrapper) {
 	// ================ API ================
 
 	api.GET("/server").Handle(r.apiHandler.ListServer)
+	api.GET("/icon/:cs").Handle(r.apiHandler.GetIcon)
 
 	// ================  ================
 

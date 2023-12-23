@@ -4,19 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/adampresley/gofavigrab/parser"
 	"github.com/cakturk/go-netstat/netstat"
 	"github.com/rs/zerolog/log"
 	"github.com/shirou/gopsutil/v3/process"
+	"gogs.mikescher.com/BlackForestBytes/goext/cryptext"
 	"gogs.mikescher.com/BlackForestBytes/goext/ginext"
 	"gogs.mikescher.com/BlackForestBytes/goext/langext"
 	"gogs.mikescher.com/BlackForestBytes/goext/rext"
+	"gogs.mikescher.com/BlackForestBytes/goext/rfctime"
 	"gogs.mikescher.com/BlackForestBytes/goext/syncext"
 	"io"
 	bunny "locbunny"
+	"locbunny/icons"
 	"locbunny/models"
 	"locbunny/webassets"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"regexp"
@@ -43,6 +48,9 @@ type Application struct {
 	cacheLock        sync.Mutex
 	serverCacheValue []models.Server
 	serverCacheTime  *time.Time
+
+	iconCache     map[string]models.Icon
+	iconCacheLock sync.Mutex
 }
 
 func NewApp(ass *webassets.Assets) *Application {
@@ -51,6 +59,7 @@ func NewApp(ass *webassets.Assets) *Application {
 		Assets:    ass,
 		stopChan:  make(chan bool),
 		IsRunning: syncext.NewAtomicBool(false),
+		iconCache: make(map[string]models.Icon, 1024),
 	}
 }
 
@@ -258,29 +267,13 @@ func (app *Application) verifyHTTPConn(sock netstat.SockTabEntry, proto string, 
 		return models.Server{}, errors.New("skip self")
 	}
 
-	c := http.Client{}
-	url := fmt.Sprintf("%s://localhost:%d", strings.ToLower(proto), port)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	resbody, header, statuscode, err := app.doRequest(ctx, proto, port, "")
 	if err != nil {
-		log.Debug().Msg(fmt.Sprintf("Failed to create [%s|%s|%d] request to %d (-> %s)", strings.ToUpper(proto), ipversion, port, port, err.Error()))
+		log.Debug().Msg(fmt.Sprintf("Failed to [%s|%s|%d] request to %d (-> %s)", strings.ToUpper(proto), ipversion, port, port, err.Error()))
 		return models.Server{}, err
 	}
 
-	resp1, err := c.Do(req)
-	if err != nil {
-		log.Debug().Msg(fmt.Sprintf("Failed to send [%s|%s|%d] request to %s (-> %s)", strings.ToUpper(proto), ipversion, port, url, err.Error()))
-		return models.Server{}, err
-	}
-
-	defer func() { _ = resp1.Body.Close() }()
-
-	resbody, err := io.ReadAll(resp1.Body)
-	if err != nil {
-		log.Debug().Msg(fmt.Sprintf("Failed to read [%s|%s|%d] response from %s (-> %s)", strings.ToUpper(proto), ipversion, port, url, err.Error()))
-		return models.Server{}, err
-	}
-
-	ct := resp1.Header.Get("Content-Type")
+	ct := header.Get("Content-Type")
 	if ct != "" {
 
 		var pnm *string = nil
@@ -292,12 +285,21 @@ func (app *Application) verifyHTTPConn(sock netstat.SockTabEntry, proto string, 
 
 		name := app.DetectName(sock, ct, string(resbody))
 
+		var iconRef *string = nil
+		iconData, iconCT := app.DetectIcon(sock, proto, port, name, string(resbody))
+		if iconData != nil && iconCT != "" {
+			cs := cryptext.StrSha256(cryptext.BytesSha256(iconData) + iconCT)
+			_, _ = app.StoreIcon(cs, iconData, iconCT)
+			iconRef = &cs
+		}
+
 		return models.Server{
 			Port:        port,
 			IP:          sock.LocalAddr.IP.String(),
 			Name:        name,
+			Icon:        iconRef,
 			Protocol:    proto,
-			StatusCode:  resp1.StatusCode,
+			StatusCode:  statuscode,
 			Response:    string(resbody),
 			ContentType: ct,
 			Process:     pnm,
@@ -307,9 +309,31 @@ func (app *Application) verifyHTTPConn(sock netstat.SockTabEntry, proto string, 
 		}, nil
 	}
 
-	log.Debug().Msg(fmt.Sprintf("Failed to categorize [%s|%s|%d] response from %s (Content-Type: '%s')", strings.ToUpper(proto), ipversion, port, url, ct))
+	log.Debug().Msg(fmt.Sprintf("Failed to categorize [%s|%s|%d] response (Content-Type: '%s')", strings.ToUpper(proto), ipversion, port, ct))
 
 	return models.Server{}, errors.New("invalid response-type")
+}
+
+func (app *Application) doRequest(ctx context.Context, proto string, port int, path string) ([]byte, http.Header, int, error) {
+	c := http.Client{}
+	url := fmt.Sprintf("%s://localhost:%d"+path, strings.ToLower(proto), port)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	resp1, err := c.Do(req)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	defer func() { _ = resp1.Body.Close() }()
+
+	resbody, err := io.ReadAll(resp1.Body)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return resbody, resp1.Header, resp1.StatusCode, nil
 }
 
 func (app *Application) DetectName(sock netstat.SockTabEntry, ct string, body string) string {
@@ -351,6 +375,103 @@ func (app *Application) DetectName(sock netstat.SockTabEntry, ct string, body st
 	}
 
 	return "unknown"
+}
+
+func (app *Application) DetectIcon(sock netstat.SockTabEntry, proto string, port int, name string, body string) ([]byte, string) {
+
+	if strings.Contains(strings.ToLower(body), "it looks like you are trying to access mongodb over http on the native driver port.") {
+		return icons.MongoDB, "image/svg+xml"
+	}
+
+	if sock.Process != nil {
+		pname := strings.ToLower(strings.TrimSpace(sock.Process.Name))
+		if pname == "vlc" {
+			return icons.VLC, "image/svg+xml"
+		}
+		if pname == "cupsd" {
+			return icons.CUPS, "image/svg+xml"
+		}
+		if pname == "containerd" {
+			return icons.Docker, "image/svg+xml"
+		}
+	}
+
+	name = strings.ToLower(name)
+
+	if strings.HasPrefix(name, "goland") {
+		return icons.GoLand, "image/svg+xml"
+	}
+	if strings.HasPrefix(name, "phpstorm") {
+		return icons.PHPStorm, "image/svg+xml"
+	}
+	if strings.HasPrefix(name, "pycharm") {
+		return icons.PyCharm, "image/svg+xml"
+	}
+	if strings.HasPrefix(name, "webstorm") {
+		return icons.WebStorm, "image/svg+xml"
+	}
+	if strings.HasPrefix(name, "intellijidea") {
+		return icons.IntellijIDEA, "image/svg+xml"
+	}
+	if strings.HasPrefix(name, "rider") {
+		return icons.Rider, "image/svg+xml"
+	}
+	if strings.HasPrefix(name, "androidstudio") {
+		return icons.AndroidStudio, "image/svg+xml"
+	}
+
+	if favurlAbs, err := parser.NewHTMLParser(body).GetFaviconURL(); err == nil {
+		if parsedURL, err := url.Parse(favurlAbs); err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			defer cancel()
+			resbody, hdr, sc, err := app.doRequest(ctx, proto, port, parsedURL.EscapedPath())
+			if err == nil && sc >= 200 && sc < 300 && hdr.Get("Content-Type") != "" {
+				return resbody, hdr.Get("Content-Type")
+			}
+		}
+	}
+
+	{
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		resbody, _, sc, err := app.doRequest(ctx, proto, port, "/favicon.ico")
+		if err == nil && sc >= 200 && sc < 300 {
+			return resbody, "image/vnd.microsoft.icon"
+		}
+	}
+
+	{
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		resbody, _, sc, err := app.doRequest(ctx, proto, port, "/favicon.png")
+		if err == nil && sc >= 200 && sc < 300 {
+			return resbody, "image/png"
+		}
+	}
+
+	{
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		resbody, _, sc, err := app.doRequest(ctx, proto, port, "/favicon.jpeg")
+		if err == nil && sc >= 200 && sc < 300 {
+			return resbody, "image/jpeg"
+		}
+	}
+
+	{
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		resbody, _, sc, err := app.doRequest(ctx, proto, port, "/favicon.jpg")
+		if err == nil && sc >= 200 && sc < 300 {
+			return resbody, "image/jpeg"
+		}
+	}
+
+	if sock.Process != nil && sock.Process.Name == "java" {
+		return icons.Java, "image/svg+xml"
+	}
+
+	return nil, ""
 }
 
 func (app *Application) isInvalidHTMLTitle(title string) bool {
@@ -422,4 +543,36 @@ func (app *Application) extractNameFromJava(cmdl []string) (string, bool) {
 	}
 
 	return "", false
+}
+
+func (app *Application) StoreIcon(cs string, data []byte, ct string) (models.Icon, bool) {
+	app.iconCacheLock.Lock()
+	defer app.iconCacheLock.Unlock()
+
+	if v, ok := app.iconCache[cs]; ok {
+		return v, false
+	}
+
+	v := models.Icon{
+		IconID:      models.NewIconID(),
+		Checksum:    cs,
+		Data:        data,
+		ContentType: ct,
+		Time:        rfctime.NowRFC3339Nano(),
+	}
+
+	app.iconCache[cs] = v
+
+	return v, true
+}
+
+func (app *Application) GetIcon(ctx *ginext.AppContext, cs string) *models.Icon {
+	app.iconCacheLock.Lock()
+	defer app.iconCacheLock.Unlock()
+
+	if v, ok := app.iconCache[cs]; ok {
+		return langext.Ptr(v)
+	}
+
+	return nil
 }

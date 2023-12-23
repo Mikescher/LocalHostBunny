@@ -14,6 +14,18 @@ build: enums ids swagger fmt
 	rm -f ./_build/bunny_backend
 	go build -v -buildvcs=false -o _build/bunny_backend ./cmd/server
 
+release: build
+	mkdir -p _release
+	rm -f ./_release/bunny
+	go build -v -buildvcs=false -o _release/bunny ./cmd/server
+
+restart:
+	mkdir -p _release
+	sudo rm -f ./_release/bunny
+	sudo systemctl stop localhostbunny
+	go build -v -buildvcs=false -o _release/bunny ./cmd/server
+	sudo systemctl start localhostbunny
+
 enums:
 	go generate models/enums.go
 

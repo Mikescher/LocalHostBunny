@@ -7,7 +7,7 @@ import "go.mongodb.org/mongo-driver/bson/bsontype"
 import "go.mongodb.org/mongo-driver/bson/primitive"
 import "gogs.mikescher.com/BlackForestBytes/goext/exerr"
 
-const ChecksumIDGenerator = "c6ecd0c3665e4ed6d1316ccf2899ba29a28d9d06b6c6b97a86adc19c1343787e" // GoExtVersion: 0.0.288
+const ChecksumIDGenerator = "ce868e40b2314fd3d5484f0c1366d2580d188535e6d7400b16977f76c4c159a6" // GoExtVersion: 0.0.288
 
 // ================================ AnyID (ids.go) ================================
 
@@ -100,4 +100,35 @@ func (i JobExecutionID) AsAny() AnyID {
 
 func NewJobExecutionID() JobExecutionID {
 	return JobExecutionID(primitive.NewObjectID().Hex())
+}
+
+// ================================ IconID (ids.go) ================================
+
+func (i IconID) MarshalBSONValue() (bsontype.Type, []byte, error) {
+	if objId, err := primitive.ObjectIDFromHex(string(i)); err == nil {
+		return bson.MarshalValue(objId)
+	} else {
+		return 0, nil, exerr.New(exerr.TypeMarshalEntityID, "Failed to marshal IconID("+i.String()+") to ObjectId").Str("value", string(i)).Type("type", i).Build()
+	}
+}
+
+func (i IconID) String() string {
+	return string(i)
+}
+
+func (i IconID) ObjID() (primitive.ObjectID, error) {
+	return primitive.ObjectIDFromHex(string(i))
+}
+
+func (i IconID) Valid() bool {
+	_, err := primitive.ObjectIDFromHex(string(i))
+	return err == nil
+}
+
+func (i IconID) AsAny() AnyID {
+	return AnyID(i)
+}
+
+func NewIconID() IconID {
+	return IconID(primitive.NewObjectID().Hex())
 }

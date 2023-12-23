@@ -7,6 +7,8 @@ function now() { return (new Date()).getTime(); }
 
 function enc(v) { return `${v}`.replace(/[\u00A0-\u9999<>&]/g, i => '&#'+i.charCodeAt(0)+';') }
 
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
 function updateHTML(servers) {
 
     const main = document.getElementById('maincontent')
@@ -16,21 +18,30 @@ function updateHTML(servers) {
     for (const srv of servers) {
 
         html += `<a class="server" href="${srv['protocol'].toLowerCase()}://localhost:${srv['port']}" target="_blank">`;
-        html += `<span class="txt_icon"><img src="/icons/microchip-sharp-solid.svg" alt="process"></span>`
+        if (srv['icon'] === null) {
+            html += `<span class="txt_icon"><img src="/icons/microchip-sharp-solid.svg" alt="icon"></span>`
+        } else {
+            html += `<span class="txt_icon"><img src="/api/v1/icon/${srv['icon']}" alt="icon"></span>`
+        }
         html += `<span class="txt_name">${enc(srv['name'])}</span>`
         html += `<span class="txt_port">${enc(srv['port'])}</span>`
         html += `</a>`;
 
     }
     main.innerHTML = html;
-
 }
 
 function onVisibilityChange() {
-    if (!document.hidden && (now() - last_refresh) > refresh_delay) autoReload();
+    console.log('[I] Visibility changed to ' + document.hidden)
+
+    if (!document.hidden && (now() - last_refresh) > refresh_delay) {
+        sleep(300).then(async () => await autoReload());
+    }
 }
 
 async function autoReload() {
+    console.log('[I] AutoReload')
+
     try {
         document.getElementById('loader').classList.remove('hidden');
 

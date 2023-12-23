@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"gogs.mikescher.com/BlackForestBytes/goext/exerr"
 	"gogs.mikescher.com/BlackForestBytes/goext/ginext"
 	bunny "locbunny"
 	"locbunny/logic"
@@ -44,4 +45,34 @@ func (h APIHandler) ListServer(pctx ginext.PreContext) ginext.HTTPResponse {
 	}
 
 	return ginext.JSON(http.StatusOK, response{Servers: srvs})
+}
+
+// GetIcon swaggerdoc
+//
+//	@Summary	Get Icon
+//
+//	@Param		cs	path	number	true	"Icon Checksum"
+//
+//	@Router		/icon/:cs [GET]
+func (h APIHandler) GetIcon(pctx ginext.PreContext) ginext.HTTPResponse {
+	type uri struct {
+		Checksum string `uri:"cs"`
+	}
+
+	var u uri
+	ctx, _, errResp := pctx.URI(&u).Start()
+	if errResp != nil {
+		return *errResp
+	}
+	defer ctx.Cancel()
+
+	icn := h.app.GetIcon(ctx, u.Checksum)
+	if icn == nil {
+		return ginext.Error(exerr.New(bunny.ErrEntityNotFound, "Icon not found").Str("cs", u.Checksum).WithStatuscode(404).Build())
+	}
+
+	return ginext.Data(200, icn.ContentType, icn.Data).
+		WithHeader("X-BUNNY-ICONID", icn.IconID.String()).
+		WithHeader("X-BUNNY-CHECKSUM", icn.Checksum).
+		WithHeader("X-BUNNY-ICONDATE", icn.Time.String())
 }

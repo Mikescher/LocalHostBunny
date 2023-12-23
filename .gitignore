@@ -4,6 +4,8 @@ _build
 .run-data
 _run-data
 
+_release
+
 DOCKER_GIT_INFO
 
 .swaggobin

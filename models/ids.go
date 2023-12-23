@@ -19,3 +19,5 @@ type AnyID string //@id:type
 type JobLogID string //@id:type
 
 type JobExecutionID string //@id:type
+
+type IconID string //@id:type

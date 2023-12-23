@@ -10,6 +10,8 @@ require (
 	gogs.mikescher.com/BlackForestBytes/goext v0.0.288
 )
 
+require github.com/adampresley/gofavigrab v0.0.0-20150913222647-3e339572468d // indirect
+
 require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect

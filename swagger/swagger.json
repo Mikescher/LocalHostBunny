@@ -175,6 +175,21 @@
                 }
             }
         },
+        "/icon/:cs": {
+            "get": {
+                "summary": "Get Icon",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Icon Checksum",
+                        "name": "cs",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/index.html": {
             "get": {
                 "summary": "(Website)",
@@ -302,6 +317,9 @@
             "type": "object",
             "properties": {
                 "contentType": {
+                    "type": "string"
+                },
+                "icon": {
                     "type": "string"
                 },
                 "ip": {
